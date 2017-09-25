@@ -3,6 +3,7 @@ import copy
 import textwrap
 from collections import Counter
 from collections import defaultdict
+from types import MethodType
 from typing import Tuple
 import os
 import time
@@ -13,6 +14,8 @@ import ruamel.yaml
 from eth_utils import from_wei
 
 from populus import Project
+from populus.chain.base import BaseChain
+from populus.wait import Wait
 from populus.utils.cli import request_account_unlock
 from populus.utils.accounts import is_account_locked
 from web3.contract import Contract
@@ -29,12 +32,13 @@ from ico.etherscan import verify_contract
 from ico.etherscan import get_etherscan_link
 
 
-def deploy_contract(project: Project, chain, deploy_address, contract_def: dict, chain_name: str, need_unlock=True) -> Contract:
+def deploy_contract(project: Project, chain, deploy_address, contract_def: dict, chain_name: str, need_unlock=True, timeout=180) -> Contract:
     """Deploy a single contract.
 
     :param need_unlock: Do the account unlock procedure (disable for testrpc)
     """
 
+    BaseChain.wait = property(lambda self: Wait(self.web3, timeout))
     web3 = chain.web3
 
     contract_name = contract_def["contract_name"]
@@ -100,6 +104,7 @@ def deploy_crowdsale(project: Project, chain, yaml_filename: str, source_definit
     # Store the address we used for the deployment
     runtime_data["deploy_address"] = deploy_address
     chain_name = runtime_data["chain"]
+    deploy_contract_timeout_secs = runtime_data.get("deploy_contract_timeout_secs", 180)
     verify_on_etherscan = asbool(runtime_data["verify_on_etherscan"])
     browser_driver = runtime_data.get("browser_driver", "chrome")
     solc = runtime_data["solc"]
@@ -130,7 +135,7 @@ def deploy_crowdsale(project: Project, chain, yaml_filename: str, source_definit
         # Store expanded data for output
         runtime_data["contracts"][name] = expanded_contract_def
 
-        contracts[name] = deploy_contract(project, chain, deploy_address, expanded_contract_def, chain_name, need_unlock=need_unlock)
+        contracts[name] = deploy_contract(project, chain, deploy_address, expanded_contract_def, chain_name, need_unlock=need_unlock, timeout=deploy_contract_timeout_secs)
         statistics["deployed"] += 1
 
         # Perform manual verification of the deployed contract
