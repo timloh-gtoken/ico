@@ -93,8 +93,8 @@ def get_post_actions_context(section_data: str, runtime_data: dict, contracts: D
 
     context = get_jinja_context(runtime_data)
 
-    def _confirm_tx(txid):
-        check_succesful_tx(web3, txid)
+    def _confirm_tx(txid, timeout=180):
+        check_succesful_tx(web3, txid, timeout=timeout)
 
     def _confirm_multiple_txs(*txids, timeout=180):
         check_multiple_succesful_txs(web3, txids, timeout=timeout)
