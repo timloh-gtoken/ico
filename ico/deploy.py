@@ -29,7 +29,7 @@ from ico.etherscan import verify_contract
 from ico.etherscan import get_etherscan_link
 
 
-def deploy_contract(project: Project, chain, deploy_address, contract_def: dict, chain_name: str, need_unlock=True) -> Contract:
+def deploy_contract(project: Project, chain, deploy_address, contract_def: dict, chain_name: str, need_unlock=True, gas_price_multiplier=1.2) -> Contract:
     """Deploy a single contract.
 
     :param need_unlock: Do the account unlock procedure (disable for testrpc)
@@ -49,7 +49,7 @@ def deploy_contract(project: Project, chain, deploy_address, contract_def: dict,
             request_account_unlock(chain, deploy_address, timeout=3600)
 
     # Use non-default gas price for speedier processing
-    gas_price = int(web3.eth.gasPrice * 1.2)
+    gas_price = int(web3.eth.gasPrice * gas_price_multiplier)
 
     transaction = {"from": deploy_address, "gasPrice": gas_price}
     kwargs = dict(**contract_def["arguments"])  # Unwrap YAML CommentedMap
@@ -100,6 +100,7 @@ def deploy_crowdsale(project: Project, chain, yaml_filename: str, source_definit
     # Store the address we used for the deployment
     runtime_data["deploy_address"] = deploy_address
     chain_name = runtime_data["chain"]
+    gas_price_multiplier = runtime_data.get("gas_price_multiplier", 1.2)
     verify_on_etherscan = asbool(runtime_data["verify_on_etherscan"])
     browser_driver = runtime_data.get("browser_driver", "chrome")
     solc = runtime_data["solc"]
@@ -130,7 +131,7 @@ def deploy_crowdsale(project: Project, chain, yaml_filename: str, source_definit
         # Store expanded data for output
         runtime_data["contracts"][name] = expanded_contract_def
 
-        contracts[name] = deploy_contract(project, chain, deploy_address, expanded_contract_def, chain_name, need_unlock=need_unlock)
+        contracts[name] = deploy_contract(project, chain, deploy_address, expanded_contract_def, chain_name, need_unlock=need_unlock, gas_price_multiplier=gas_price_multiplier)
         statistics["deployed"] += 1
 
         # Perform manual verification of the deployed contract
